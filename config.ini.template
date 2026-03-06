@@ -18,6 +18,7 @@ lcd_rst_pin = 25
 one_wire_pin = 4
 
 [sensors]
+# Supports 1 or more DS18B20 sensors. Add one line per sensor.
 # Format: ROM_ID = Logical Name
 # Find your ROM IDs under /sys/bus/w1/devices/ after wiring with the overlay enabled.
 28-00000xxxxxxx = big_freezer
