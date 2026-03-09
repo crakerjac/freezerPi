@@ -283,6 +283,46 @@ The `/data` partition bypasses the overlay and remains writable. The root partit
 
 ---
 
+## Operations
+
+### Starting and Stopping Services
+
+Two helper scripts manage the service lifecycle. The critical rule is that the **watchdog must always be stopped before the FreezerPi services** — stopping a service without stopping the watchdog first means the IPC file stops updating, and the watchdog will force a hardware reboot 180 seconds later.
+
+```bash
+sudo ./stop_services.sh     # watchdog first, then all five services
+sudo ./start_services.sh    # all five services, then watchdog last
+```
+
+`start_services.sh` includes two preflight checks before starting anything:
+
+- Confirms at least one DS18B20 sensor is visible on the 1-Wire bus at `/sys/bus/w1/devices/28-*`
+- Confirms `config.ini` no longer contains the placeholder sensor ROM IDs
+
+If either check fails it warns you and prompts before continuing. It also waits 5 seconds after starting the FreezerPi services before starting the watchdog, giving `sensor_service` time to write the initial IPC file.
+
+### Working Without Sensors Connected (Setup and Maintenance Mode)
+
+Any time you need to work on the system without sensors physically connected — editing config, redeploying code, running `uninstall.sh` — stop services first:
+
+```bash
+sudo ./stop_services.sh
+# do your work
+sudo ./start_services.sh    # when sensors are reconnected and ready
+```
+
+### Testing the Setup Script
+
+To re-run `setup.sh` from a clean state without reimaging the SD card:
+
+```bash
+sudo ./stop_services.sh
+sudo ./uninstall.sh
+sudo ./setup.sh
+```
+
+---
+
 ## Diagnostics
 
 ```bash
@@ -311,6 +351,9 @@ freezerpi/
 ├── LICENSE
 ├── .gitignore
 ├── setup.sh                     # Automated setup script — run after Step 1
+├── uninstall.sh                 # Reverses setup.sh — for testing and reinstallation
+├── start_services.sh            # Starts all services and the watchdog
+├── stop_services.sh             # Stops watchdog first, then all services
 ├── config.ini.template          # Configuration template — copy to /data/config/config.ini
 ├── config_helper.py             # Shared config parser          (Module 0)
 ├── sensor_service.py            # DS18B20 acquisition service   (Module 2)
