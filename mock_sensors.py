@@ -82,6 +82,26 @@ def main():
         print("       Edit /data/config/config.ini before running mock_sensors.py")
         sys.exit(1)
 
+    # Warn if freezer-sensor.service is running — it will race on the IPC file
+    try:
+        import subprocess
+        result = subprocess.run(
+            ['systemctl', 'is-active', 'freezer-sensor.service'],
+            capture_output=True, text=True
+        )
+        if result.stdout.strip() == 'active':
+            print("\n[WARNING] freezer-sensor.service is currently running.")
+            print("          It will race with mock_sensors.py to write the IPC file.")
+            print("          Stop it first with:")
+            print("            sudo systemctl stop freezer-sensor.service")
+            print("")
+            response = input("Continue anyway? [y/N] ").strip().lower()
+            if response != 'y':
+                print("Aborted.")
+                sys.exit(0)
+    except Exception:
+        pass  # If systemctl isn't available, skip the check silently
+
     # Read sensor names and thresholds from config
     sensor_names  = list(dict(config.items('sensors')).values())
     poll_interval = args.interval if args.interval is not None else config.getint('sampling', 'poll_interval')
