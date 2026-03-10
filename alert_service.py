@@ -45,8 +45,19 @@ MAX_EMAIL_QUEUE          = 100
 # Hardware
 # ---------------------------------------------------------------------------
 
-buzzer         = Buzzer(config.getint('hardware', 'buzzer_pin'))
-silence_button = Button(config.getint('hardware', 'button_pin'), pull_up=True)
+try:
+    buzzer = Buzzer(config.getint('hardware', 'buzzer_pin'))
+    print("Buzzer initialized.")
+except Exception as e:
+    print(f"WARNING: Buzzer init failed (no hardware?): {e}. Buzzer disabled.")
+    buzzer = None
+
+try:
+    silence_button = Button(config.getint('hardware', 'button_pin'), pull_up=True)
+    print("Silence button initialized.")
+except Exception as e:
+    print(f"WARNING: Silence button init failed (no hardware?): {e}. Button disabled.")
+    silence_button = None
 
 # ---------------------------------------------------------------------------
 # Shared state
@@ -72,10 +83,12 @@ def silence_callback():
     with silence_lock:
         silence_until_timestamp = time.monotonic() + SILENCE_DURATION_SECONDS
     print(f"Silence button pressed. Muting buzzer for {SILENCE_DURATION_SECONDS} seconds.")
-    buzzer.off()
+    if buzzer:
+        buzzer.off()
 
 
-silence_button.when_pressed = silence_callback
+if silence_button:
+    silence_button.when_pressed = silence_callback
 
 
 # ---------------------------------------------------------------------------
@@ -95,10 +108,14 @@ def queue_email(alert_type, sensor_name, current_temp, ignore_cooldown=False, st
 
     prefix  = "[STATUS] " if status_email else "[ALERT] "
     subject = f"{prefix}Freezer Monitor {alert_type}: {sensor_name}"
+
+    # Only append F unit for numeric readings — status messages pass plain strings
+    reading = f"{current_temp}F" if isinstance(current_temp, (int, float)) else current_temp
+
     body    = (
         f"Event detected for {sensor_name}.\n"
         f"Type: {alert_type}\n"
-        f"Current Reading: {current_temp}F\n"
+        f"Current Reading: {reading}\n"
         f"Time: {time.ctime(now_real)}"
     )
 
@@ -283,12 +300,13 @@ def main():
         with silence_lock:
             is_silenced = time.monotonic() <= silence_until_timestamp
 
-        if trigger_buzzer:
-            if not is_silenced and not buzzer.is_active:
-                buzzer.on()
-        else:
-            if buzzer.is_active:
-                buzzer.off()
+        if buzzer:
+            if trigger_buzzer:
+                if not is_silenced and not buzzer.is_active:
+                    buzzer.on()
+            else:
+                if buzzer.is_active:
+                    buzzer.off()
 
         time.sleep(1)
 
