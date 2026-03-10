@@ -1,4 +1,4 @@
-# FreezerPi — Raspberry Pi Freezer Monitor
+ # FreezerPi — Raspberry Pi Freezer Monitor
 
 A self-contained, fault-tolerant freezer temperature monitoring system built on a Raspberry Pi Zero 2 W. All acquisition, storage, alerting, web hosting, and watchdog functions run locally with no external backend dependency. Designed for unattended, always-on operation with aggressive SD card wear minimization and hardware-enforced auto-recovery.
 
