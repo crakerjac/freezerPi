@@ -157,7 +157,7 @@ phase_prepare() {
         warn "Overlay filesystem does not appear to be enabled."
         info "You can skip directly to: sudo ./update.sh apply"
         echo ""
-        read -r -p "Run apply phase now instead? [y/N] " confirm
+        read -r -p "Run apply phase now instead? [y/N] " confirm || true
         if [[ "${confirm}" =~ ^[Yy]$ ]]; then
             phase_apply
             return
@@ -173,7 +173,7 @@ phase_prepare() {
     echo "  2. Reboot the Pi (root becomes writable)"
     echo "  3. You then run: sudo ./update.sh apply"
     echo ""
-    read -r -p "Continue? [y/N] " confirm
+    read -r -p "Continue? [y/N] " confirm || true
     if [[ ! "${confirm}" =~ ^[Yy]$ ]]; then
         echo "Aborted."
         exit 0
@@ -195,7 +195,7 @@ phase_prepare() {
     echo -e "${BOLD}${YEL}Reboot required.${RST}"
     echo  "  After reboot, run: sudo ./update.sh apply"
     echo ""
-    read -r -p "Reboot now? [y/N] " confirm
+    read -r -p "Reboot now? [y/N] " confirm || true
     if [[ "${confirm}" =~ ^[Yy]$ ]]; then
         reboot
     fi
@@ -224,7 +224,7 @@ phase_apply() {
     echo "  5. Re-enable the overlay filesystem"
     echo "  6. Reboot"
     echo ""
-    read -r -p "Continue? [y/N] " confirm
+    read -r -p "Continue? [y/N] " confirm || true
     if [[ ! "${confirm}" =~ ^[Yy]$ ]]; then
         echo "Aborted."
         exit 0
@@ -283,7 +283,7 @@ phase_apply() {
         echo  "  Version: ${NEW_VERSION}"
         echo  "  After reboot, run: sudo ./update.sh verify"
         echo ""
-        read -r -p "Reboot now? [y/N] " confirm
+        read -r -p "Reboot now? [y/N] " confirm || true
         if [[ "${confirm}" =~ ^[Yy]$ ]]; then
             reboot
         fi

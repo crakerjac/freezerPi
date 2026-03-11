@@ -59,7 +59,7 @@ if [[ "${SENSOR_COUNT}" -eq 0 ]]; then
     warn "Starting services anyway, but sensor_service will report missing sensors."
     warn "The watchdog will reboot the Pi in 180 seconds if the IPC file is never written."
     echo ""
-    read -r -p "Continue anyway? [y/N] " confirm
+    read -r -p "Continue anyway? [y/N] " confirm || true
     if [[ ! "${confirm}" =~ ^[Yy]$ ]]; then
         echo "Aborted. Connect sensors and reboot, then re-run this script."
         exit 0
@@ -86,7 +86,7 @@ if grep -q "28-00000xxxxxxx" "${CONFIG_FILE}"; then
     warn "config.ini still contains placeholder sensor ROM IDs."
     warn "Edit ${CONFIG_FILE} before starting — services will not work correctly."
     echo ""
-    read -r -p "Continue anyway? [y/N] " confirm
+    read -r -p "Continue anyway? [y/N] " confirm || true
     if [[ ! "${confirm}" =~ ^[Yy]$ ]]; then
         echo "Aborted."
         exit 0

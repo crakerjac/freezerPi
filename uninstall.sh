@@ -56,7 +56,7 @@ echo    "         Back it up first if you want to keep your sensor ROM IDs"
 echo    "         and credentials:"
 echo    "           cp /data/config/config.ini /data/config/config.ini.save"
 echo ""
-read -r -p "Continue? [y/N] " confirm
+read -r -p "Continue? [y/N] " confirm || true
 if [[ ! "${confirm}" =~ ^[Yy]$ ]]; then
     echo "Aborted."
     exit 0
