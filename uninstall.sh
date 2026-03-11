@@ -97,6 +97,16 @@ systemctl disable data.mount 2>/dev/null || true
 rm -f /etc/systemd/system/data.mount
 success "Removed: data.mount"
 
+# Restore /etc/fstab if setup.sh made a backup
+if [[ -f /etc/fstab.pre-freezerpi.bak ]]; then
+    cp /etc/fstab.pre-freezerpi.bak /etc/fstab
+    rm -f /etc/fstab.pre-freezerpi.bak
+    success "Restored /etc/fstab from backup"
+    info "Note: /data will now require a manual mount or fstab entry to be accessible"
+else
+    warn "No /etc/fstab backup found — fstab was not modified or backup was already removed"
+fi
+
 systemctl daemon-reload
 success "systemd daemon reloaded"
 

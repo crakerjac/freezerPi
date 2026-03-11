@@ -118,10 +118,11 @@ if ! mountpoint -q /data; then
     echo  "    sudo fdisk /dev/mmcblk0        # create p3"
     echo  "    sudo mkfs.ext4 /dev/mmcblk0p3"
     echo  "    sudo mkdir -p /data/config /data/db /data/logs"
-    echo  "    # Add to /etc/fstab:"
-    echo  "    # /dev/mmcblk0p3  /data  ext4  defaults,noatime  0  2"
-    echo  "    sudo mount -a"
+    echo  "    sudo mount /dev/mmcblk0p3 /data"
     echo  "    sudo chown -R ${REAL_USER}:${REAL_USER} /data"
+    echo  ""
+    echo  "  Do NOT add /data to /etc/fstab — setup.sh installs a systemd"
+    echo  "  data.mount unit that handles mounting and bypasses overlayroot."
     echo ""
     exit 1
 fi

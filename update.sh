@@ -52,9 +52,8 @@ SERVICES=(freezer-sensor freezer-display freezer-alert freezer-db freezer-web)
 # =============================================================================
 
 overlay_is_enabled() {
-    # Overlay is active if /proc/mounts shows overlayroot on /
-    grep -q "overlayroot\|overlay" /proc/mounts 2>/dev/null && return 0
-    # Also check raspi-config's record
+    # Check for overlay specifically on / — not on /data or other mounts
+    grep -q " / overlay" /proc/mounts 2>/dev/null && return 0
     raspi-config nonint get_overlayfs 2>/dev/null | grep -q "^1$" && return 0
     return 1
 }
