@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Freezer Monitor</title>
+    <link rel="icon" type="image/png" href="/static/favicon.png">
     <style>
         body            { font-family: Arial, sans-serif; background-color: #121212; color: #ffffff; padding: 20px; }
         h1              { margin-bottom: 20px; }
@@ -14,6 +15,13 @@
         .status-warning { color: #ffeb3b; }
         .status-critical{ color: #f44336; }
         .chart-container{ background-color: #1e1e1e; padding: 20px; border-radius: 8px; height: 400px; }
+
+        @media (max-width: 768px) {
+            body            { padding: 12px; }
+            .grid           { flex-direction: column; gap: 15px; }
+            .temp           { font-size: 3.5em; }
+            .chart-container{ height: 250px; padding: 12px; }
+        }
     </style>
     <!-- Chart.js must be downloaded and placed at static/chart.min.js — no CDN used -->
     <script src="/static/chart.min.js"></script>
@@ -104,7 +112,7 @@
                 maintainAspectRatio: false,
                 plugins: { legend: { labels: { color: 'white' } } },
                 scales: {
-                    x: { ticks: { color: 'white', maxTicksLimit: 24 } },
+                    x: { ticks: { color: 'white', maxTicksLimit: window.innerWidth < 768 ? 6 : 24 } },
                     y: {
                         ticks: { color: 'white' },
                         title: { display: true, text: 'Temperature (°F)', color: 'white' }
