@@ -7,20 +7,11 @@ Requires=freezer-sensor.service
 [Service]
 Type=simple
 User=root
-
-# Wait up to 30 seconds for the IPC file to appear before arming the watchdog.
-# This prevents a race where the watchdog starts before sensor_service has
-# written its first reading and immediately triggers a reboot.
-ExecStartPre=/bin/bash -c '\
-    for i in $(seq 1 30); do \
-        [ -f /run/freezerpi/telemetry_state.json ] && exit 0; \
-        sleep 1; \
-    done; \
-    echo "Timed out waiting for IPC file — watchdog NOT armed"; \
-    exit 1'
-
+# tmpfiles.d creates /run/freezerpi/telemetry_state.json at every boot before
+# services start, so the watchdog always has a file to monitor. sensor_service
+# overwrites it with real data within its first poll cycle. If sensor_service
+# ever stops updating the file for 180s, the watchdog triggers a reboot.
 ExecStart=/usr/sbin/watchdog -F
-
 Restart=no
 
 [Install]
