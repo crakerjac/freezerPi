@@ -63,7 +63,15 @@ def backup_ram_db_to_disk():
             dst.close()
 
         os.replace(DB_FILE + ".tmp", DB_FILE)
-        print(f"Database backed up to disk at {datetime.now().isoformat()}")
+        backup_time = datetime.now().isoformat(timespec='seconds')
+        print(f"Database backed up to disk at {backup_time}")
+
+        # Record timestamp for web dashboard status panel
+        try:
+            with open(os.path.join(DB_DIR, "last_backup"), 'w') as f:
+                f.write(backup_time)
+        except OSError as e:
+            print(f"WARNING: Could not write last_backup timestamp: {e}")
 
         # Prune old rows from RAM to prevent unbounded growth on long uptimes
         retention_days = config.getint('database', 'retention_days')

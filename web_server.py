@@ -101,6 +101,58 @@ def get_watchdog_status():
         return None  # Unknown
 
 
+def get_system_status():
+    """Returns system health metrics for the dashboard status panel."""
+    import subprocess
+    import shutil
+
+    status = {}
+
+    # IPC file age in seconds
+    try:
+        mtime = os.path.getmtime(IPC_FILE)
+        status['ipc_age_seconds'] = int(time.time() - mtime)
+    except OSError:
+        status['ipc_age_seconds'] = None
+
+    # Last SD backup time — db_logger writes a timestamp file on each backup
+    BACKUP_TS_FILE = "/data/db/last_backup"
+    try:
+        with open(BACKUP_TS_FILE) as f:
+            status['last_backup'] = f.read().strip()
+    except OSError:
+        status['last_backup'] = None
+
+    # /data disk usage
+    try:
+        usage = shutil.disk_usage('/data')
+        status['data_disk_total_gb'] = round(usage.total / 1e9, 1)
+        status['data_disk_used_gb']  = round(usage.used  / 1e9, 1)
+        status['data_disk_pct']      = round(usage.used  / usage.total * 100, 1)
+    except OSError:
+        status['data_disk_total_gb'] = None
+        status['data_disk_used_gb']  = None
+        status['data_disk_pct']      = None
+
+    # System uptime
+    try:
+        with open('/proc/uptime') as f:
+            seconds = float(f.read().split()[0])
+        days    = int(seconds // 86400)
+        hours   = int((seconds % 86400) // 3600)
+        minutes = int((seconds % 3600) // 60)
+        if days > 0:
+            status['uptime'] = f"{days}d {hours}h {minutes}m"
+        elif hours > 0:
+            status['uptime'] = f"{hours}h {minutes}m"
+        else:
+            status['uptime'] = f"{minutes}m"
+    except OSError:
+        status['uptime'] = None
+
+    return status
+
+
 @app.route('/')
 def index():
     """Serves the main dashboard, injecting threshold values from config."""
@@ -119,6 +171,12 @@ def api_current():
 def api_history():
     """Returns the last 24 hours of database readings."""
     return jsonify(get_24h_history())
+
+
+@app.route('/api/status')
+def api_status():
+    """Returns system health metrics for the status panel."""
+    return jsonify(get_system_status())
 
 
 if __name__ == '__main__':
