@@ -89,11 +89,11 @@ def get_24h_history():
 
 
 def get_watchdog_status():
-    """Returns watchdog active state by checking systemd."""
+    """Returns watchdog active state by checking freezer-watchdog.service."""
     try:
         import subprocess
         result = subprocess.run(
-            ['systemctl', 'is-active', 'watchdog'],
+            ['systemctl', 'is-active', 'freezer-watchdog'],
             capture_output=True, text=True, timeout=2
         )
         return result.stdout.strip() == 'active'
