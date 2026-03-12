@@ -127,7 +127,10 @@ def queue_email(alert_type, sensor_name, current_temp, ignore_cooldown=False, st
     now_real  = time.time()
 
     if not ignore_cooldown:
-        last_sent = last_email_sent_times.get(event_key, 0)
+        # Default to -EMAIL_COOLDOWN_SECONDS so first occurrence always fires.
+        # time.monotonic() starts at ~uptime seconds, so defaulting to 0 would
+        # incorrectly suppress alerts for the first hour after every boot.
+        last_sent = last_email_sent_times.get(event_key, -EMAIL_COOLDOWN_SECONDS)
         if (now_mono - last_sent) < EMAIL_COOLDOWN_SECONDS:
             return
 
