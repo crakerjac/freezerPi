@@ -154,11 +154,73 @@ def safe_read_json(path, retries=3):
 # Main loop
 # ---------------------------------------------------------------------------
 
+def _config_error_display(error):
+    """
+    Last-resort handler for config load failure.
+    Pushes a CONFIG ERROR frame to the display using hardcoded pin fallbacks,
+    then loops forever so the message stays visible and systemd doesn't
+    restart-loop. Healthchecks.io heartbeat stops → email arrives after timeout.
+    """
+    DC_PIN  = 24   # Hardcoded fallbacks — match default config
+    RST_PIN = 25
+    BL_PIN  = 18
+
+    print(f"FATAL: config load failed: {error}")
+    print(f"Attempting to show CONFIG ERROR on display (DC={DC_PIN}, RST={RST_PIN}).")
+
+    try:
+        import board, busio, digitalio, adafruit_st7735r
+
+        spi = busio.SPI(clock=board.SCLK, MOSI=board.MOSI)
+        dc  = digitalio.DigitalInOut(getattr(board, f'D{DC_PIN}'))
+        rst = digitalio.DigitalInOut(getattr(board, f'D{RST_PIN}'))
+        cs  = digitalio.DigitalInOut(board.CE0)
+
+        try:
+            bl = digitalio.DigitalInOut(getattr(board, f'D{BL_PIN}'))
+            bl.direction = digitalio.Direction.OUTPUT
+            bl.value = True
+        except Exception:
+            pass  # Backlight wired to 3.3V — not fatal
+
+        display = adafruit_st7735r.ST7735R(
+            spi, dc=dc, cs=cs, rst=rst,
+            width=128, height=160, rotation=0, bgr=True,
+        )
+
+        img  = Image.new("RGB", (128, 160), (180, 0, 0))
+        draw = ImageDraw.Draw(img)
+        try:
+            font = ImageFont.truetype(FONT_PATH, 14)
+        except Exception:
+            font = ImageFont.load_default()
+
+        draw.text((4,  20), "CONFIG",  fill=(255, 255, 255), font=font)
+        draw.text((4,  42), "ERROR",   fill=(255, 255, 255), font=font)
+        draw.text((4,  74), "Check:",  fill=(255, 200, 200), font=font)
+        draw.text((4,  92), "/data/",  fill=(255, 200, 200), font=font)
+        draw.text((4, 108), "config/", fill=(255, 200, 200), font=font)
+        draw.text((4, 124), "config",  fill=(255, 200, 200), font=font)
+        draw.text((4, 140), ".ini",    fill=(255, 200, 200), font=font)
+
+        push_to_display(img)
+        print("CONFIG ERROR frame pushed to display.")
+
+    except Exception as disp_err:
+        print(f"Display init also failed: {disp_err}. Looping silently.")
+
+    while True:
+        time.sleep(60)
+
+
 def main():
     print("Starting Display Service...")
     init_display()
 
-    config        = load_config()
+    try:
+        config = load_config()
+    except Exception as e:
+        _config_error_display(e)
     sensor_order  = sorted(dict(config.items('sensors')).values())
     refresh_rate  = config.getfloat('display', 'refresh_rate')
     stale_timeout = config.getint('display', 'stale_timeout')

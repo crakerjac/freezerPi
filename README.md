@@ -1,4 +1,4 @@
- # FreezerPi — Raspberry Pi Freezer Monitor
+# FreezerPi — Raspberry Pi Freezer Monitor
 
 A self-contained, fault-tolerant freezer temperature monitoring system built on a Raspberry Pi Zero 2 W. All acquisition, storage, alerting, web hosting, and watchdog functions run locally with no external backend dependency. Designed for unattended, always-on operation with aggressive SD card wear minimization and hardware-enforced auto-recovery.
 
@@ -38,9 +38,12 @@ A self-contained, fault-tolerant freezer temperature monitoring system built on 
 | Silence Button | GPIO27 | Pin 13 |
 | LCD DC | GPIO24 | Pin 18 |
 | LCD RST | GPIO25 | Pin 22 |
-| SPI MOSI | GPIO10 | Pin 19 |
-| SPI CLK | GPIO11 | Pin 23 |
+| LCD BLK (backlight) | GPIO18 | Pin 12 |
+| SPI MOSI (LCD SDA) | GPIO10 | Pin 19 |
+| SPI CLK (LCD SCL) | GPIO11 | Pin 23 |
 | SPI CE0 (LCD CS) | GPIO8 | Pin 24 |
+
+> **Note on display labels:** Chinese ST7735 modules label SPI MOSI as `SDA` and SPI CLK as `SCL`. This is a mislabeling — it is SPI, not I2C. Wire SDA→GPIO10 and SCL→GPIO11. The `BLK` pin controls the backlight; wire it to GPIO18 for software control or to 3.3V for always-on.
 
 All pins are configurable in `config.ini`.
 
@@ -413,6 +416,30 @@ Stop the mock with `Ctrl+C`. The IPC file is left in place so downstream service
 
 ---
 
+## Display Identification
+
+Chinese ST7735 modules often ship with no documentation. `display_test.py` cycles through known configurations and pushes test patterns so you can visually confirm which variant you have. On success it writes the working parameters directly to `config.ini`.
+
+> **Wiring note:** The `SDA` and `SCL` labels on these modules are SPI, not I2C. Wire `SDA → GPIO10` (MOSI) and `SCL → GPIO11` (CLK). The `BLK` pin controls the backlight — wire to GPIO18 for software control or to 3.3V for always-on, and set `lcd_bl_pin` in `config.ini` accordingly.
+
+```bash
+# List all candidates without touching hardware
+python3 display_test.py --list
+
+# Run the interactive identification tool
+python3 display_test.py
+```
+
+The tool tests solid red, green, and blue fills (BGR vs RGB swap is immediately obvious), then color bars with a resolution label. Enter `a` at the menu to test all candidates in order, or enter a number to jump to a specific one. When you confirm a match the display params are written to `config.ini` and picked up by `display_service.py` on next start.
+
+If nothing matches, check:
+- **Blank screen** — VDD (3.3V), GND, and SPI wiring
+- **Backlight only** — display init failing silently, try a different candidate
+- **Colors shifted** — try BGR=True vs BGR=False variants
+- **Image cropped or offset** — try rowstart/colstart variants
+
+---
+
 ## Diagnostics
 
 ```bash
@@ -453,6 +480,7 @@ freezerpi/
 ├── db_maintenance.py            # Weekly CRON pruning script    (Module 5)
 ├── web_server.py                # Flask API and dashboard       (Module 6)
 ├── mock_sensors.py              # Dev tool — simulates sensors without hardware
+├── display_test.py              # Dev tool — identifies display variant, writes config
 ├── templates/
 │   └── index.html               # Web dashboard UI
 ├── static/

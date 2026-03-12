@@ -30,7 +30,32 @@ from config_helper import load_config
 # Configuration
 # ---------------------------------------------------------------------------
 
-config = load_config()
+def _config_error_alert(error):
+    """
+    Last-resort handler for config load failure.
+    Sounds the buzzer on the hardcoded pin and loops forever so:
+      - systemd sees the service as 'running' (no restart loop)
+      - the buzzer keeps sounding until someone investigates
+      - healthchecks.io heartbeat stops → email arrives after timeout
+    The silence button is intentionally not supported here — config is
+    unreadable so we don't know which GPIO it's on.
+    """
+    BUZZER_PIN = 17  # Hardcoded fallback — matches default config
+    print(f"FATAL: config load failed: {error}")
+    print(f"Sounding buzzer on GPIO{BUZZER_PIN}. Fix /data/config/config.ini and restart.")
+    try:
+        bz = Buzzer(BUZZER_PIN)
+        bz.on()
+    except Exception as bz_err:
+        print(f"Buzzer init also failed: {bz_err}. Looping silently.")
+    while True:
+        time.sleep(60)
+
+
+try:
+    config = load_config()
+except Exception as e:
+    _config_error_alert(e)
 
 IPC_FILE                 = "/run/freezerpi/telemetry_state.json"
 STALE_THRESHOLD_SECONDS  = config.getint('display', 'stale_timeout')
@@ -70,6 +95,7 @@ email_queue             = []
 queue_lock              = threading.Lock()
 last_email_sent_times   = {}  # {"sensor_ALERTTYPE": monotonic_timestamp}
 critical_read_counts    = {}  # {"sensor_name": consecutive_critical_count}
+sensor_failed_state     = {}  # {"sensor_name": bool} — True while sensor is reporting None
 last_freeze_email       = 0
 
 
@@ -102,7 +128,10 @@ def queue_email(alert_type, sensor_name, current_temp, ignore_cooldown=False, st
     now_real  = time.time()
 
     if not ignore_cooldown:
-        last_sent = last_email_sent_times.get(event_key, 0)
+        # Default to -EMAIL_COOLDOWN_SECONDS so first occurrence always fires.
+        # time.monotonic() starts at ~uptime seconds, so defaulting to 0 would
+        # incorrectly suppress alerts for the first hour after every boot.
+        last_sent = last_email_sent_times.get(event_key, -EMAIL_COOLDOWN_SECONDS)
         if (now_mono - last_sent) < EMAIL_COOLDOWN_SECONDS:
             return
 
@@ -277,9 +306,15 @@ def main():
                         if temp is None:
                             trigger_buzzer = True
                             if is_new_read:
+                                sensor_failed_state[name] = True
                                 queue_email("FAILURE", name, "MISSING/READ ERROR")
                                 critical_read_counts[name] = 0
                         else:
+                            # Sensor recovered from a previous FAILURE state
+                            if is_new_read and sensor_failed_state.get(name, False):
+                                sensor_failed_state[name] = False
+                                queue_email("RECOVERED", name, temp, status_email=True)
+
                             if temp >= temp_critical:
                                 if is_new_read:
                                     critical_read_counts[name] = critical_read_counts.get(name, 0) + 1

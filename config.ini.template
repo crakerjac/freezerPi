@@ -1,3 +1,14 @@
+# FreezerPi Configuration Template
+#
+# SETUP INSTRUCTIONS:
+#   1. Copy this file to /data/config/config.ini on your Pi:
+#        cp config.ini.template /data/config/config.ini
+#   2. Edit /data/config/config.ini with your actual values.
+#      Do NOT edit this template file with real credentials.
+#
+# This template is version-controlled. Your working config.ini is
+# listed in .gitignore and will never be committed to the repository.
+
 [system]
 device_id = freezer-pi-01
 ntp_sync_year = 2024
@@ -14,19 +25,30 @@ buzzer_pin = 17
 button_pin = 27
 lcd_dc_pin = 24
 lcd_rst_pin = 25
+# Backlight pin — wire BLK to a GPIO for software control, or to 3.3V for always-on.
+# If wired to 3.3V, set lcd_bl_pin = none
+lcd_bl_pin = 18
 # 1-Wire bus pin (Requires: dtoverlay=w1-gpio,gpiopin=4 in /boot/firmware/config.txt)
 one_wire_pin = 4
 
 [sensors]
-# Supports 1 or more DS18B20 sensors. Add one line per sensor.
-# Format: ROM_ID = Logical Name
-# Find your ROM IDs under /sys/bus/w1/devices/ after wiring with the overlay enabled.
+# Map each sensor's DS18B20 ROM ID to a logical name.
+# Find ROM IDs under /sys/bus/w1/devices/ after wiring with the overlay enabled.
+# Format: ROM_ID = logical_name
 28-00000xxxxxxx = big_freezer
 28-00000yyyyyyy = small_freezer
 
 [display]
 refresh_rate = 0.5
 stale_timeout = 600
+# Display driver parameters — run display_test.py to identify your display
+# and auto-populate these values.
+width = 128
+height = 160
+rotation = 0
+bgr = True
+rowstart = 0
+colstart = 0
 
 [alerts]
 silence_duration = 3600
@@ -37,7 +59,7 @@ sensor_freeze_seconds = 180
 smtp_server = smtp.gmail.com
 smtp_port = 465
 smtp_user = your_email@gmail.com
-# NOTE: Use a Gmail App Password here if 2FA is enabled on your account.
+# Use a Gmail App Password if 2FA is enabled on your account.
 # Generate one at: https://myaccount.google.com/apppasswords
 smtp_pass = xxxx-xxxx-xxxx-xxxx
 recipient = your_email@gmail.com

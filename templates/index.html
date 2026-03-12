@@ -20,6 +20,19 @@
         .wd-active      { color: #4caf50; }
         .wd-inactive    { color: #f44336; }
         .wd-unknown     { color: #666; }
+        .system-panel   { background-color: #1e1e1e; border-radius: 8px; margin-top: 20px; overflow: hidden; }
+        .system-toggle  { width: 100%; background: none; border: none; color: #888; font-size: 0.8em;
+                          padding: 10px 20px; text-align: left; cursor: pointer; display: flex;
+                          justify-content: space-between; align-items: center; }
+        .system-toggle:hover { color: #aaa; }
+        .system-body    { display: none; padding: 12px 20px 16px; }
+        .system-body.open { display: block; }
+        .system-grid    { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+        .stat           { text-align: center; }
+        .stat-label     { font-size: 0.7em; color: #666; text-transform: uppercase; letter-spacing: 0.05em; }
+        .stat-value     { font-size: 1.1em; color: #ccc; margin-top: 2px; }
+        .stat-warn      { color: #ffeb3b; }
+        .stat-crit      { color: #f44336; }
 
         @media (max-width: 768px) {
             body            { padding: 12px; }
@@ -39,6 +52,20 @@
 
 <div class="chart-container">
     <canvas id="historyChart"></canvas>
+</div>
+
+<div class="system-panel">
+    <button class="system-toggle" onclick="toggleSystem(this)">
+        <span>System</span><span id="system-arrow">&#9660;</span>
+    </button>
+    <div class="system-body" id="system-body">
+        <div class="system-grid" id="system-grid">
+            <div class="stat"><div class="stat-label">IPC Age</div><div class="stat-value" id="st-ipc">—</div></div>
+            <div class="stat"><div class="stat-label">Last SD Backup</div><div class="stat-value" id="st-backup">—</div></div>
+            <div class="stat"><div class="stat-label">/data Used</div><div class="stat-value" id="st-disk">—</div></div>
+            <div class="stat"><div class="stat-label">Uptime</div><div class="stat-value" id="st-uptime">—</div></div>
+        </div>
+    </div>
 </div>
 
 <div class="footer">
@@ -150,14 +177,72 @@
             .catch(err => console.error('Failed to fetch history:', err));
     }
 
+    function toggleSystem(btn) {
+        const body = document.getElementById('system-body');
+        const arrow = document.getElementById('system-arrow');
+        body.classList.toggle('open');
+        arrow.innerHTML = body.classList.contains('open') ? '&#9650;' : '&#9660;';
+    }
+
+    function updateStatus() {
+        fetch('/api/status')
+            .then(r => r.json())
+            .then(data => {
+                // IPC age
+                const ipcEl = document.getElementById('st-ipc');
+                if (data.ipc_age_seconds === null) {
+                    ipcEl.textContent = 'N/A';
+                    ipcEl.className = 'stat-value stat-warn';
+                } else {
+                    const age = data.ipc_age_seconds;
+                    ipcEl.textContent = age < 60 ? age + 's' :
+                                        age < 3600 ? Math.floor(age/60) + 'm' :
+                                        Math.floor(age/3600) + 'h';
+                    ipcEl.className = age > 300 ? 'stat-value stat-crit' :
+                                      age > 120  ? 'stat-value stat-warn' : 'stat-value';
+                }
+
+                // Last backup
+                const bkEl = document.getElementById('st-backup');
+                if (data.last_backup) {
+                    const d = new Date(data.last_backup);
+                    bkEl.textContent = d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                    bkEl.title = data.last_backup;
+                    const hoursAgo = (Date.now() - d) / 3600000;
+                    bkEl.className = hoursAgo > 8 ? 'stat-value stat-warn' : 'stat-value';
+                } else {
+                    bkEl.textContent = 'None yet';
+                    bkEl.className = 'stat-value stat-warn';
+                }
+
+                // Disk usage
+                const diskEl = document.getElementById('st-disk');
+                if (data.data_disk_pct !== null) {
+                    diskEl.textContent = data.data_disk_used_gb + ' / ' + data.data_disk_total_gb + ' GB';
+                    diskEl.className = data.data_disk_pct > 90 ? 'stat-value stat-crit' :
+                                       data.data_disk_pct > 75 ? 'stat-value stat-warn' : 'stat-value';
+                } else {
+                    diskEl.textContent = 'N/A';
+                    diskEl.className = 'stat-value';
+                }
+
+                // Uptime
+                document.getElementById('st-uptime').textContent = data.uptime || 'N/A';
+            })
+            .catch(err => console.error('Failed to fetch status:', err));
+    }
+
     // Initial load
     updateCurrentTemps();
     fetchHistory();
+    updateStatus();
 
     // Poll current temps every 30 s; refresh graph every 5 min (matches DB commit interval)
     setInterval(updateCurrentTemps, 30000);
     setInterval(fetchHistory,       300000);
+    setInterval(updateStatus,        60000);   // status panel refreshes every 60 s
 </script>
+
 <div class="footer">FreezerPi v{{ version }}</div>
 </body>
 </html>

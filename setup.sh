@@ -229,7 +229,7 @@ install -d -m 755 -o "${REAL_USER}" -g "${REAL_USER}" \
 
 # Python modules
 for f in config_helper.py sensor_service.py display_service.py \
-          alert_service.py db_logger.py db_maintenance.py web_server.py mock_sensors.py; do
+          alert_service.py db_logger.py db_maintenance.py web_server.py mock_sensors.py display_test.py; do
     if [[ -f "${SCRIPT_DIR}/${f}" ]]; then
         install -m 644 -o "${REAL_USER}" -g "${REAL_USER}" \
             "${SCRIPT_DIR}/${f}" "/opt/freezerpi/${f}"
@@ -329,11 +329,36 @@ EOF
 
 # Do NOT enable or start the watchdog here. The watchdog monitors the IPC
 # file for updates — if sensors are not connected yet, it will trigger a
-# reboot loop. start_services.sh arms the watchdog only after confirming
-# sensors are present and services are up.
+# reboot loop. freezer-watchdog.service arms the watchdog only after
+# confirming the IPC file exists.
 systemctl disable watchdog 2>/dev/null || true
 systemctl stop watchdog 2>/dev/null || true
-success "Watchdog configured (disabled — armed by start_services.sh)"
+
+# The Debian watchdog package gates startup on run_watchdog=1 in
+# /etc/default/watchdog. Without this the service exits silently at boot
+# and systemctl start watchdog hangs waiting for a PID that never arrives.
+if [[ -f /etc/default/watchdog ]]; then
+    sed -i 's/^run_watchdog=.*/run_watchdog=1/' /etc/default/watchdog
+    grep -q '^run_watchdog=' /etc/default/watchdog || echo 'run_watchdog=1' >> /etc/default/watchdog
+else
+    echo 'run_watchdog=1' > /etc/default/watchdog
+fi
+success "Watchdog configured (disabled — armed by freezer-watchdog.service)"
+
+# Disable systemd's built-in hardware watchdog. By default systemd claims
+# /dev/watchdog0 for itself (RuntimeWatchdogSec=1min) which prevents the
+# userspace watchdog daemon from opening /dev/watchdog. Systemd's watchdog
+# only checks that systemd is alive — it won't detect a frozen sensor_service.
+# Our daemon monitors the IPC file, which is the correct check for FreezerPi.
+SYSTEMD_WD_CONF="/etc/systemd/system.conf.d/disable-runtime-watchdog.conf"
+mkdir -p /etc/systemd/system.conf.d/
+cat > "${SYSTEMD_WD_CONF}" <<'EOF'
+[Manager]
+RuntimeWatchdogSec=0
+ShutdownWatchdogSec=0
+EOF
+success "Systemd RuntimeWatchdog disabled (${SYSTEMD_WD_CONF})"
+info "Reboot required for this to take effect"
 
 # =============================================================================
 # STEP 9 — logrotate
@@ -363,11 +388,17 @@ header "Installing tmpfiles.d Configuration"
 # owned by pi, so no service needs to run as root.
 cat > /etc/tmpfiles.d/freezerpi.conf <<'EOF'
 # /etc/tmpfiles.d/freezerpi.conf
-# Creates runtime directories in /run owned by the pi user at every boot.
+# Creates runtime directories and IPC file in /run owned by pi at every boot.
 # /run/freezerpi  — IPC state file, corruption flag
 # /run/freezer_db — live SQLite RAM database
+#
+# The IPC file is pre-created so the watchdog daemon has a file to monitor
+# from the moment it starts. sensor_service overwrites it with real data
+# within its first poll cycle. Without this, the watchdog would see a
+# missing file at boot and trigger an immediate reboot.
 d /run/freezerpi   0755 pi pi -
 d /run/freezer_db  0755 pi pi -
+f /run/freezerpi/telemetry_state.json 0644 pi pi - {"sensors":{},"timestamp":0,"boot":true}
 EOF
 
 # Apply immediately so services can start without a reboot
@@ -402,6 +433,7 @@ SERVICES=(
     freezer-alert.service
     freezer-db.service
     freezer-web.service
+    freezer-watchdog.service
 )
 
 for svc in "${SERVICES[@]}"; do
@@ -458,7 +490,7 @@ echo  "  ✓ System packages installed"
 echo  "  ✓ Python dependencies installed"
 echo  "  ✓ Source code deployed to /opt/freezerpi/"
 echo  "  ✓ /data directory structure created"
-echo  "  ✓ Watchdog daemon configured (disabled — armed by start_services.sh)"
+echo  "  ✓ Watchdog daemon configured (auto-armed at boot by freezer-watchdog.service)"
 echo  "  ✓ tmpfiles.d configured (/run/freezerpi and /run/freezer_db created, pi-owned)"
 echo  "  ✓ logrotate configured"
 echo  "  ✓ Five systemd services installed and enabled"

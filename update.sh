@@ -45,7 +45,7 @@ fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STATE_FILE="/data/update_state"
-SERVICES=(freezer-sensor freezer-display freezer-alert freezer-db freezer-web)
+SERVICES=(freezer-sensor freezer-display freezer-alert freezer-db freezer-web freezer-watchdog)
 
 # =============================================================================
 # Helpers
