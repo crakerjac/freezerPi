@@ -1,13 +1,11 @@
 [Unit]
 Description=Freezer Monitor — Hardware Watchdog Supervisor
 Documentation=https://github.com/crakerjac/freezerPi
-# Start after sensor service is up — watchdog monitors the IPC file it writes
 After=freezer-sensor.service
 Requires=freezer-sensor.service
 
 [Service]
-Type=oneshot
-RemainAfterExit=yes
+Type=simple
 User=root
 
 # Wait up to 30 seconds for the IPC file to appear before arming the watchdog.
@@ -21,8 +19,7 @@ ExecStartPre=/bin/bash -c '\
     echo "Timed out waiting for IPC file — watchdog NOT armed"; \
     exit 1'
 
-ExecStart=/bin/systemctl start watchdog.service
-ExecStop=/bin/systemctl stop watchdog.service
+ExecStart=/usr/sbin/watchdog -F
 
 Restart=no
 
