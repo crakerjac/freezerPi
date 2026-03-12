@@ -38,9 +38,12 @@ A self-contained, fault-tolerant freezer temperature monitoring system built on 
 | Silence Button | GPIO27 | Pin 13 |
 | LCD DC | GPIO24 | Pin 18 |
 | LCD RST | GPIO25 | Pin 22 |
-| SPI MOSI | GPIO10 | Pin 19 |
-| SPI CLK | GPIO11 | Pin 23 |
+| LCD BLK (backlight) | GPIO18 | Pin 12 |
+| SPI MOSI (LCD SDA) | GPIO10 | Pin 19 |
+| SPI CLK (LCD SCL) | GPIO11 | Pin 23 |
 | SPI CE0 (LCD CS) | GPIO8 | Pin 24 |
+
+> **Note on display labels:** Chinese ST7735 modules label SPI MOSI as `SDA` and SPI CLK as `SCL`. This is a mislabeling — it is SPI, not I2C. Wire SDA→GPIO10 and SCL→GPIO11. The `BLK` pin controls the backlight; wire it to GPIO18 for software control or to 3.3V for always-on.
 
 All pins are configurable in `config.ini`.
 
