@@ -30,7 +30,32 @@ from config_helper import load_config
 # Configuration
 # ---------------------------------------------------------------------------
 
-config = load_config()
+def _config_error_alert(error):
+    """
+    Last-resort handler for config load failure.
+    Sounds the buzzer on the hardcoded pin and loops forever so:
+      - systemd sees the service as 'running' (no restart loop)
+      - the buzzer keeps sounding until someone investigates
+      - healthchecks.io heartbeat stops → email arrives after timeout
+    The silence button is intentionally not supported here — config is
+    unreadable so we don't know which GPIO it's on.
+    """
+    BUZZER_PIN = 17  # Hardcoded fallback — matches default config
+    print(f"FATAL: config load failed: {error}")
+    print(f"Sounding buzzer on GPIO{BUZZER_PIN}. Fix /data/config/config.ini and restart.")
+    try:
+        bz = Buzzer(BUZZER_PIN)
+        bz.on()
+    except Exception as bz_err:
+        print(f"Buzzer init also failed: {bz_err}. Looping silently.")
+    while True:
+        time.sleep(60)
+
+
+try:
+    config = load_config()
+except Exception as e:
+    _config_error_alert(e)
 
 IPC_FILE                 = "/run/freezerpi/telemetry_state.json"
 STALE_THRESHOLD_SECONDS  = config.getint('display', 'stale_timeout')
