@@ -155,10 +155,9 @@ def get_system_status():
         result = subprocess.run(['vcgencmd', 'measure_temp'], capture_output=True, text=True, timeout=2)
         # Output format: temp=42.8'C
         temp_str = result.stdout.strip().replace("temp=", "").replace("'C", "")
-        cpu_c = float(temp_str)
-        status['cpu_temp_f'] = round(cpu_c * 9/5 + 32, 1)
+        status['cpu_temp_c'] = float(temp_str)
     except Exception:
-        status['cpu_temp_f'] = None
+        status['cpu_temp_c'] = None
 
     return status
 
