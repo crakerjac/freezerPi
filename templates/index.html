@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Freezer Monitor  v{{ version }}</title>
+    <title>IceboxHero  v{{ version }}</title>
     <link rel="icon" type="image/png" href="/static/favicon.png">
     <style>
         body            { font-family: Arial, sans-serif; background-color: #121212; color: #ffffff; padding: 20px; }
@@ -64,6 +64,7 @@
             <div class="stat"><div class="stat-label">Last SD Backup</div><div class="stat-value" id="st-backup">—</div></div>
             <div class="stat"><div class="stat-label">/data Used</div><div class="stat-value" id="st-disk">—</div></div>
             <div class="stat"><div class="stat-label">Uptime</div><div class="stat-value" id="st-uptime">—</div></div>
+            <div class="stat"><div class="stat-label">Pi CPU Temp</div><div class="stat-value" id="st-cputemp">—</div></div>
         </div>
     </div>
 </div>
@@ -228,6 +229,17 @@
 
                 // Uptime
                 document.getElementById('st-uptime').textContent = data.uptime || 'N/A';
+
+                // CPU temperature
+                const cpuEl = document.getElementById('st-cputemp');
+                if (data.cpu_temp_c !== null && data.cpu_temp_c !== undefined) {
+                    cpuEl.textContent = data.cpu_temp_c.toFixed(1) + '°C';
+                    cpuEl.className = data.cpu_temp_c >= 80 ? 'stat-value stat-crit' :
+                                      data.cpu_temp_c >= 70 ? 'stat-value stat-warn' : 'stat-value';
+                } else {
+                    cpuEl.textContent = 'N/A';
+                    cpuEl.className = 'stat-value';
+                }
             })
             .catch(err => console.error('Failed to fetch status:', err));
     }
@@ -243,6 +255,6 @@
     setInterval(updateStatus,        60000);   // status panel refreshes every 60 s
 </script>
 
-<div class="footer">FreezerPi v{{ version }}</div>
+<div class="footer">IceboxHero v{{ version }}</div>
 </body>
 </html>
