@@ -168,7 +168,7 @@ This is the only step that cannot be automated. `fdisk` is destructive and must 
 
 By default, Raspberry Pi OS expands the root partition (`p2`) to fill the entire SD card on first boot. You must prevent this **before the Pi boots for the first time** to leave unallocated space for the `/data` partition (`p3`).
 
-1. Flash Raspberry Pi OS Lite (64-bit recommended) to your SD card using [Raspberry Pi Imager](https://www.raspberrypi.com/software/).
+1. Flash Raspberry Pi OS Lite (32-bit recommended) to your SD card using [Raspberry Pi Imager](https://www.raspberrypi.com/software/).
 2. Remove and re-insert the SD card into your PC. The `bootfs` FAT32 volume will mount automatically.
 3. Open `cmdline.txt` in a text editor.
 4. Find and **delete** this exact string (leave everything else on the line intact):
@@ -370,7 +370,7 @@ sudo ./setup.sh
 
 ### Setup
 
-Stop `icebox-sensor.service` first to avoid racing on the IPC file, then run the mock directly:
+Stop `icebox-sensor.service` first to avoid race conditions with the IPC file, then run the mock directly:
 
 ```bash
 sudo systemctl stop icebox-sensor.service
